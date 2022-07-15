@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly string _instanceId;
         private readonly IEnvironment _environment;
         private readonly IFunctionDataCache _functionDataCache;
-        private readonly IOptions<LanguageWorkerOptions> _languageWorkerOptions;
+        private readonly IOptionsMonitor<LanguageWorkerOptions> _languageWorkerOptions;
         private static readonly int _processId = Process.GetCurrentProcess().Id;
 
         private ValueStopwatch _stopwatch;
@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IApplicationLifetime applicationLifetime,
             IExtensionBundleManager extensionBundleManager,
             IFunctionDataCache functionDataCache,
-            IOptions<LanguageWorkerOptions> languageWorkerOptions,
+            IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
             ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
@@ -280,7 +280,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
 
                 // get worker config information and check to see if worker should index or not
-                var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
+                var workerConfigs = _languageWorkerOptions.CurrentValue.WorkerConfigs;
 
                 bool workerIndexing = Utility.CanWorkerIndex(workerConfigs, _environment);
 
@@ -557,7 +557,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
 
-                var workerConfig = _languageWorkerOptions.Value.WorkerConfigs?.FirstOrDefault(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase));
+                var workerConfig = _languageWorkerOptions.CurrentValue.WorkerConfigs?.FirstOrDefault(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase));
 
                 // If there's no worker config, use the default (for legacy behavior; mostly for tests).
                 TimeSpan initializationTimeout = workerConfig?.CountOptions?.InitializationTimeout ?? WorkerProcessCountOptions.DefaultInitializationTimeout;
