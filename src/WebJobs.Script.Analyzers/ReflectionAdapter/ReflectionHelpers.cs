@@ -90,7 +90,6 @@ namespace Microsoft.Azure.Functions.Analyzers
         // Instantiate a binding attribute
         public static Attribute MakeAttr(JobHostMetadataProvider tooling, SemanticModel semantics, AttributeSyntax attrSyntax)
         {
-            // TODO: What to use instead of IJobHostMetadataProvider?
             IMethodSymbol symAttributeCtor = (IMethodSymbol)semantics.GetSymbolInfo(attrSyntax).Symbol;
             var syntaxParams = symAttributeCtor.Parameters;
 
@@ -175,7 +174,7 @@ namespace Microsoft.Azure.Functions.Analyzers
             if (p2.Kind == SymbolKind.ErrorType)
             {
                 // The IDE already has at least one error here that the type is undefined.
-                // So no value in trying to find additional posible WebJobs errors.
+                // So no value in trying to find additional possible WebJobs errors.
                 throw new InvalidOperationException("Error symbol. Can't convert symbol type:" + p2.ToString());
             }
             if (p2.Kind == SymbolKind.ArrayType)

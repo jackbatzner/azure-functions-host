@@ -25,10 +25,10 @@ namespace Microsoft.Azure.Functions.Analyzers
         bool _registered;
 
         // Assembly Display Name --> Path
-        Dictionary<string, string> _map = new Dictionary<string, string>();
+        Dictionary<string, string> _assemblyNameToPathMap = new Dictionary<string, string>();
 
         // Assembly Display Name --> loaded Assembly object
-        Dictionary<string, Assembly> _mapRef = new Dictionary<string, Assembly>();
+        Dictionary<string, Assembly> _assemblyNameToObjMap = new Dictionary<string, Assembly>();
 
         const string WebJobsAssemblyName = "Microsoft.Azure.WebJobs";
         const string WebJobsHostAssemblyName = "Microsoft.Azure.WebJobs.Host";
@@ -62,20 +62,20 @@ namespace Microsoft.Azure.Functions.Analyzers
                     var dispName = asm.Display; // For .net core, the displayname can be the full path
                     var path = asm.FilePath;
 
-                    _map[dispName] = path;
+                    _assemblyNameToPathMap[dispName] = path;
                 }
 
                 // Builtins
-                _mapRef["mscorlib"] = typeof(object).Assembly;
-                _mapRef[WebJobsAssemblyName] = typeof(Microsoft.Azure.WebJobs.FunctionNameAttribute).Assembly;
-                _mapRef[WebJobsHostAssemblyName] = typeof(Microsoft.Azure.WebJobs.JobHost).Assembly;
+                _assemblyNameToObjMap["mscorlib"] = typeof(object).Assembly;
+                _assemblyNameToObjMap[WebJobsAssemblyName] = typeof(Microsoft.Azure.WebJobs.FunctionNameAttribute).Assembly;
+                _assemblyNameToObjMap[WebJobsHostAssemblyName] = typeof(Microsoft.Azure.WebJobs.JobHost).Assembly;
 
                 // JSON.Net?
             }
 
             // Produce tooling object
             var webjobsStartups = new List<Type>();
-            foreach (var path in _map.Values)
+            foreach (var path in _assemblyNameToPathMap.Values)
             {
                 // We don't want to load and reflect over every dll.
                 // By convention, restrict based on filenames.
@@ -98,7 +98,7 @@ namespace Microsoft.Azure.Functions.Analyzers
                     assembly = Assembly.LoadFrom(path);
 
                     string asmName = new AssemblyName(assembly.FullName).Name;
-                    _mapRef[asmName] = assembly;
+                    _assemblyNameToObjMap[asmName] = assembly;
 
                     var test = assembly.GetCustomAttributes<WebJobsStartupAttribute>().Select(a => a.WebJobsStartupType);
                     if (test.Count() > 0)
@@ -117,7 +117,7 @@ namespace Microsoft.Azure.Functions.Analyzers
                 .ConfigureWebJobs(b =>
                 {
                     b.AddAzureStorageCoreServices()
-                        .UseExternalStartup(new CompilationWebJobsStartupTypeLocator(_mapRef.Values.ToArray()));
+                        .UseExternalStartup(new CompilationWebJobsStartupTypeLocator(_assemblyNameToObjMap.Values.ToArray()));
                 })
                 .Build();
             var tooling = (JobHostMetadataProvider)host.Services.GetRequiredService<IJobHostMetadataProvider>();
@@ -135,7 +135,7 @@ namespace Microsoft.Azure.Functions.Analyzers
             var asmName = asm.Identity.Name;
 
             Assembly asm2;
-            if (_mapRef.TryGetValue(asmName, out asm2))
+            if (_assemblyNameToObjMap.TryGetValue(asmName, out asm2))
             {
                 asmRef = asm2;
                 return true;
@@ -161,7 +161,7 @@ namespace Microsoft.Azure.Functions.Analyzers
                 return false;
             }
 
-            foreach (var kv in _map)
+            foreach (var kv in _assemblyNameToPathMap)
             {
                 var path = kv.Value;
                 var shortName = Path.GetFileNameWithoutExtension(path);
@@ -169,7 +169,7 @@ namespace Microsoft.Azure.Functions.Analyzers
                 if (string.Equals(asmName, shortName, StringComparison.OrdinalIgnoreCase))
                 {
                     var asm3 = Assembly.LoadFile(path);
-                    _mapRef[asmName] = asm3;
+                    _assemblyNameToObjMap[asmName] = asm3;
 
                     asmRef = asm3;
                     return true;
@@ -195,7 +195,7 @@ namespace Microsoft.Azure.Functions.Analyzers
             var context = args.RequestingAssembly;
 
             Assembly asm2;
-            if (_mapRef.TryGetValue(an.Name, out asm2))
+            if (_assemblyNameToObjMap.TryGetValue(an.Name, out asm2))
             {
                 return asm2;
             }
@@ -203,7 +203,7 @@ namespace Microsoft.Azure.Functions.Analyzers
             asm2 = LoadFromProjectReference(an);
             if (asm2 != null)
             {
-                _mapRef[an.Name] = asm2;
+                _assemblyNameToObjMap[an.Name] = asm2;
             }
 
             return asm2;
@@ -211,7 +211,7 @@ namespace Microsoft.Azure.Functions.Analyzers
 
         private Assembly LoadFromProjectReference(AssemblyName an)
         {
-            foreach (var kv in _map)
+            foreach (var kv in _assemblyNameToPathMap)
             {
                 var path = kv.Key;
                 if (path.Contains(@"\ref\")) // Skip reference assemblies.

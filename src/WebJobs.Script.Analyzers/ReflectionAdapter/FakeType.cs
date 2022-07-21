@@ -9,8 +9,6 @@ using System.Text;
 
 namespace Microsoft.Azure.Functions.Analyzers
 {
-    // ToString() Microsoft.Azure.WebJobs.IAsyncCollector`1[System.String]
-
     // Represent a bound generic type like:
     //   IEnumerable<string>
     // definition is IEnumerable`1, and TypeArgs are [string]
